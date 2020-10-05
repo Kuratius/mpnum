@@ -22,6 +22,8 @@ import itertools as it
 
 import mpnum as mp
 import numpy as np
+#import multiprocessing
+import tensorflow as tf
 from numpy.linalg import qr, svd
 from numpy.testing import assert_array_equal
 from six.moves import range, zip, zip_longest
@@ -1146,7 +1148,17 @@ def dot(mpa1, mpa2, axes=(-1, 0), astype=None):
     else:
         axes = tuple(ax + 1 if ax >= 0 else ax - 1 for ax in axes)
 
-    ltens = [_local_dot(l, r, axes) for l, r in zip(mpa1.lt, mpa2.lt)]
+    #pool = multiprocessing.Pool(2)
+    #start_time = time.time()
+    #make the pool object distribute the operation across the processes and collect the result
+    #ltens = [pool.starmap_async(_local_dot, [(l,r, axes)  for l, r in zip(mpa1.lt, mpa2.lt)])]
+    #ltens=[p.get() for p in ltens];
+    #print("Starmap async with processes took--- %s seconds ---" % (time.time() - start_time))
+    #close pool object again, as the processes aren't needed anymore
+    #pool.close()
+    #pool.join()
+
+    ltens = [_local_tdot(l, r, axes) for l, r in zip(mpa1.lt, mpa2.lt)]
 
     if astype is None:
         astype = type(mpa1)
@@ -1829,6 +1841,43 @@ def _local_dot(ltens_l, ltens_r, axes):
     return res.reshape((ltens_l.shape[0] * ltens_r.shape[0], ) +
                        res.shape[2:-2] +
                        (ltens_l.shape[-1] * ltens_r.shape[-1],))
+
+
+def _local_tdot(ltens_l, ltens_r, axes):
+    """Computes the local tensors of a dot product `dot(l, r)`.
+
+    Besides computing the normal dot product, this function rearranges the
+    virtual legs in such a way that the result is a valid local tensor again.
+
+    :param ltens_l: Array with `ndim > 1`
+    :param ltens_r: Array with `ndim > 1`
+    :param axes: Axes to compute dot product using the convention of
+        :func:`numpy.tensordot()`. Note that these correspond to the true
+        (and not the just the physical) legs of the local tensors
+    :returns: Correct local tensor representation
+
+    """
+    # number of contracted legs need to be the same
+    clegs_l = len(axes[0]) if isinstance(axes[0], collections.Sequence) else 1
+    clegs_r = len(axes[1]) if isinstance(axes[0], collections.Sequence) else 1
+    assert clegs_l == clegs_r, \
+        "Number of contracted legs differ: {} != {}".format(clegs_l, clegs_r)
+    #res = np.tensordot(ltens_l, ltens_r, axes=axes)
+    # Rearrange the virtual-dimension legs
+    #res = np.rollaxis(res, ltens_l.ndim - clegs_l, 1)
+    #res = np.rollaxis(res, ltens_l.ndim - clegs_l,
+    #                  ltens_l.ndim + ltens_r.ndim - clegs_l - clegs_r - 1)
+    #mpa1 is a local tensor of an mpo with 2 physical legs and 2 non-physical legs
+    #mpa2 is a local tensor of an mps with 1 physical leg and 2 non-physical legs
+    #localpdot(mpa1, mpa2, axes=(2,1) computes the resulting mps 
+    t=tf.tensordot(ltens_l,ltens_r,axes=axes)
+    t=tf.transpose(t,(0,3,1,2,4))
+    t=tf.reshape(t,[t.shape[0]*t.shape[1],t.shape[2],t.shape[3]*t.shape[4]])
+    return t;
+
+    #return res.reshape((ltens_l.shape[0] * ltens_r.shape[0], ) +
+    #                   res.shape[2:-2] +
+    #                   (ltens_l.shape[-1] * ltens_r.shape[-1],))
 
 
 def _local_add(ltenss):

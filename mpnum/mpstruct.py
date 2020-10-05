@@ -13,7 +13,10 @@ __all__ = ['LocalTensors']
 
 def _roview(array):
     """Creates a read only view of the numpy array `view`."""
-    view = array.view()
+    try :
+        view = array.view()
+    except Exception as e :
+        view=array.numpy().view()
     view.setflags(write=False)
     return view
 
