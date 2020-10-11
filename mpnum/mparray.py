@@ -1862,23 +1862,27 @@ def _local_tdot(ltens_l, ltens_r, axes):
     clegs_r = len(axes[1]) if isinstance(axes[0], collections.Sequence) else 1
     assert clegs_l == clegs_r, \
         "Number of contracted legs differ: {} != {}".format(clegs_l, clegs_r)
+    res=tf.tensordot(ltens_l.astype(complex),ltens_r.astype(complex),axes=axes)
     #res = np.tensordot(ltens_l, ltens_r, axes=axes)
     # Rearrange the virtual-dimension legs
+    a=ltens_l.ndim - clegs_l
+    b=ltens_l.ndim + ltens_r.ndim - clegs_l - clegs_r - 1
+    if (a<1):
+        res=tf.experimental.numpy.moveaxis(res,a,1-1)
+    else:
+        res=tf.experimental.numpy.moveaxis(res,a,1)
+    if(a<b):
+        res=tf.experimental.numpy.moveaxis(res,a,b-1);
+    else:
+        res=tf.experimental.numpy.moveaxis(res,a,b)
     #res = np.rollaxis(res, ltens_l.ndim - clegs_l, 1)
-    #res = np.rollaxis(res, ltens_l.ndim - clegs_l,
-    #                  ltens_l.ndim + ltens_r.ndim - clegs_l - clegs_r - 1)
-    #mpa1 is a local tensor of an mpo with 2 physical legs and 2 non-physical legs
-    #mpa2 is a local tensor of an mps with 1 physical leg and 2 non-physical legs
-    #localpdot(mpa1, mpa2, axes=(2,1) computes the resulting mps 
-    t=tf.tensordot(ltens_l,ltens_r,axes=axes)
-    t=tf.transpose(t,(0,3,1,2,4))
-    t=tf.reshape(t,[t.shape[0]*t.shape[1],t.shape[2],t.shape[3]*t.shape[4]])
-    return t;
+    #res = np.rollaxis(res, ltens_l.ndim - clegs_l,ltens_l.ndim + ltens_r.ndim - clegs_l - clegs_r - 1)
+    #t=tf.transpose(t,(0,3,1,2,4))
+    #t=tf.reshape(t,[t.shape[0]*t.shape[1],t.shape[2],t.shape[3]*t.shape[4]])
+    #return t;
 
-    #return res.reshape((ltens_l.shape[0] * ltens_r.shape[0], ) +
-    #                   res.shape[2:-2] +
-    #                   (ltens_l.shape[-1] * ltens_r.shape[-1],))
-
+    #return res.reshape((ltens_l.shape[0] * ltens_r.shape[0], ) +res.shape[2:-2] +(ltens_l.shape[-1] * ltens_r.shape[-1],))
+    return tf.reshape(res,((ltens_l.shape[0] * ltens_r.shape[0], ) +res.shape[2:-2] +(ltens_l.shape[-1] * ltens_r.shape[-1],)))
 
 def _local_add(ltenss):
     """Computes the local tensors of a sum of MPArrays (except for the boundary
