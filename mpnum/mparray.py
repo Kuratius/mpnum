@@ -1867,22 +1867,62 @@ def _local_tdot(ltens_l, ltens_r, axes):
     # Rearrange the virtual-dimension legs
     a=ltens_l.ndim - clegs_l
     b=ltens_l.ndim + ltens_r.ndim - clegs_l - clegs_r - 1
-    if (a<1):
-        res=tf.experimental.numpy.moveaxis(res,a,1-1)
-    else:
-        res=tf.experimental.numpy.moveaxis(res,a,1)
-    if(a<b):
-        res=tf.experimental.numpy.moveaxis(res,a,b-1);
-    else:
-        res=tf.experimental.numpy.moveaxis(res,a,b)
+    #if (a<1):
+    #    res=tf.experimental.numpy.moveaxis(res,a,1-1)
+    #else:
+    #    res=tf.experimental.numpy.moveaxis(res,a,1)
+    #if(a<b):
+    #    res=tf.experimental.numpy.moveaxis(res,a,b-1);
+   # else:
+     #   res=tf.experimental.numpy.moveaxis(res,a,b)
     #res = np.rollaxis(res, ltens_l.ndim - clegs_l, 1)
     #res = np.rollaxis(res, ltens_l.ndim - clegs_l,ltens_l.ndim + ltens_r.ndim - clegs_l - clegs_r - 1)
-    #t=tf.transpose(t,(0,3,1,2,4))
+
+    mylist=list(range(len(res.shape)))
+    #mylist.insert(1,mylist.pop(a))
+    
+    temp=mylist.pop(a)
+    if(a<1):mylist.insert(1-1,temp)
+    else:mylist.insert(1,temp)
+    #print(res.shape)
+    #print(mylist)
+    if(a<0 or b<0):print("something went very wrong"+str(a)+" "+str(b))
+    res=tf.transpose(res,mylist)
+    res2 = np.tensordot(ltens_l, ltens_r, axes=axes)
+    prevshape=res2.shape
+    # Rearrange the virtual-dimension legs
+    res2 = np.rollaxis(res2, ltens_l.ndim - clegs_l, 1)
+    #print(res.shape, res2.shape)
+    #print(a,b)
+    #print(mylist)
+    #if(not np.array_equal(res.numpy(),res2)):
+        #print("oops:"+"a=",a,str(res2.shape),str(res.shape))
+        #print(mylist, prevshape)
+    res2 = np.rollaxis(res2, ltens_l.ndim - clegs_l,ltens_l.ndim + ltens_r.ndim - clegs_l - clegs_r - 1)
+    mylist2=list(range(len(res.shape)))
+    temp=mylist2.pop(a)
+    if(a<b):mylist2.insert(b-1,temp)
+    else:mylist2.insert(b,temp)
+    prevshape=res.shape
+    res=tf.transpose(res,mylist2)
+    #print(res.shape, res2.shape)
+    #print(a,b)
+    #print(mylist)
+    #if(not np.array_equal(res.numpy(),res2)):
+        #print(a,b, "second roll gone wrong")
+        #print(res)
+        #print(mylist2)
+        #print(res.shape,res2.shape)
+        #print(prevshape)
+        #print(ltens_l.ndim - clegs_l,ltens_l.ndim + ltens_r.ndim - clegs_l - clegs_r - 1)
     #t=tf.reshape(t,[t.shape[0]*t.shape[1],t.shape[2],t.shape[3]*t.shape[4]])
     #return t;
-
     #return res.reshape((ltens_l.shape[0] * ltens_r.shape[0], ) +res.shape[2:-2] +(ltens_l.shape[-1] * ltens_r.shape[-1],))
     return tf.reshape(res,((ltens_l.shape[0] * ltens_r.shape[0], ) +res.shape[2:-2] +(ltens_l.shape[-1] * ltens_r.shape[-1],)))
+    #except Exception as e:
+	#    print(mylist)
+	#   print(res.shape)
+
 
 def _local_add(ltenss):
     """Computes the local tensors of a sum of MPArrays (except for the boundary
